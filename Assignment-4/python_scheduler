@@ -1,0 +1,100 @@
+# === Python: Employee Scheduler (Preference + Full Coverage) ===
+#
+# - 10 employees, each with ranked preferences for every day.
+# - Each employee can work at most 5 days/week, and at most 1 shift/day.
+# - We fill all 7 days × 3 shifts × 2 slots = 42 total slots.
+#   1) First, we try to assign each shift from “top preference” candidates (randomly among them).
+#   2) If a shift still needs slots, we move to “second preference” for that shift.
+#   3) Next, if still underfilled, we try “third preference.”
+#   4) Finally, if any slots remain, we pick **any** eligible employee (random) to fill the slot.
+# - Because 10 employees × 5 allowed days = 50 total “slots,” we always have enough capacity for 42.
+# - Static sample data; final schedule is printed at the end.
+
+import random
+from collections import defaultdict
+
+# 1) Days and Shifts
+DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+SHIFTS = ["morning", "afternoon", "evening"]
+
+# 2) Sample employee preferences (10 employees). Each has a ranked list for every day.
+employees = {
+    "Alice":  {day: ["morning", "afternoon", "evening"] for day in DAYS},
+    "Bob":    {day: ["afternoon", "evening", "morning"] for day in DAYS},
+    "Carol":  {day: ["evening", "morning", "afternoon"] for day in DAYS},
+    "Dave":   {day: ["morning", "evening", "afternoon"] for day in DAYS},
+    "Eve":    {day: ["afternoon", "morning", "evening"] for day in DAYS},
+    "Frank":  {day: ["evening", "afternoon", "morning"] for day in DAYS},
+    "Grace":  {day: ["morning", "afternoon", "evening"] for day in DAYS},
+    "Heidi":  {day: ["evening", "morning", "afternoon"] for day in DAYS},
+    "Ivan":   {day: ["afternoon", "evening", "morning"] for day in DAYS},
+    "Judy":   {day: ["morning", "evening", "afternoon"] for day in DAYS},
+}
+
+# 3) Data structures to build:
+#    schedule[day][shift] = list of assigned employee names (max 2 per shift)
+schedule = {day: {shift: [] for shift in SHIFTS} for day in DAYS}
+
+# Track how many total days each employee has been assigned (max 5 per week).
+employee_shift_count = defaultdict(int)
+
+# Track which employees are already assigned on each day (to enforce 1 shift/day).
+assigned_today = {day: set() for day in DAYS}
+
+
+def is_eligible(emp_name: str, day: str) -> bool:
+    """
+    An employee is eligible if:
+      - They have worked < 5 days so far (employee_shift_count < 5)
+      - They are not yet assigned to any shift on this 'day'
+    """
+    return (employee_shift_count[emp_name] < 5) and (emp_name not in assigned_today[day])
+
+
+# 4) MAIN ASSIGNMENT: For each day and each shift, fill exactly 2 slots.
+for day in DAYS:
+    for shift in SHIFTS:
+        slots_needed = 2
+
+        # (a) Try assigning from top (0), second (1), then third (2) preferences for this shift on 'day'
+        for pref_level in range(3):
+            if slots_needed == 0:
+                break
+
+            # Build a list of candidates who (1) are eligible for 'day', and (2) rank 'shift' at pref_level
+            candidates = [
+                name
+                for name in employees
+                if is_eligible(name, day) and employees[name][day][pref_level] == shift
+            ]
+            random.shuffle(candidates)
+
+            # Assign as many as needed (up to slots_needed) from this preference group
+            while candidates and slots_needed > 0:
+                chosen = candidates.pop()
+                schedule[day][shift].append(chosen)
+                assigned_today[day].add(chosen)
+                employee_shift_count[chosen] += 1
+                slots_needed -= 1
+
+        # (b) If still underfilled, pick from any remaining eligible employees (random)
+        if slots_needed > 0:
+            candidates = [name for name in employees if is_eligible(name, day)]
+            random.shuffle(candidates)
+            while candidates and slots_needed > 0:
+                chosen = candidates.pop()
+                schedule[day][shift].append(chosen)
+                assigned_today[day].add(chosen)
+                employee_shift_count[chosen] += 1
+                slots_needed -= 1
+
+        # By construction, there will always be enough “eligible” employees (10×5 = 50 total slots > 42 needed).
+
+
+# 5) PRINT the final schedule in a readable format
+print("Final Weekly Schedule:\n" + "=" * 22)
+for day in DAYS:
+    print(f"\n{day}:")
+    for shift in SHIFTS:
+        assigned_list = schedule[day][shift]
+        print(f"  {shift.title()}: {', '.join(assigned_list)}")
