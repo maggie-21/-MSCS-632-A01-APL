@@ -1,139 +1,114 @@
-"Ride superclass"
-Object subclass: #Ride
-    instanceVariableNames: 'rideID pickupLocation dropoffLocation distance'
-    classVariableNames: ''
-    poolDictionaries: ''
-    category: 'RideSharing'.
+"Define Ride class"
+Object subclass: Ride [
+    | rideID pickup dropoff distance |
 
-Ride >> initialize
-    super initialize.
-    rideID := ''.
-    pickupLocation := ''.
-    dropoffLocation := ''.
-    distance := 0.
+    Ride class >> newWith: id pickup: p dropoff: d distance: dist [
+        ^self new initializeWith: id pickup: p dropoff: d distance: dist
+    ]
 
-Ride >> rideID: anID
-    rideID := anID.
+    initializeWith: id pickup: p dropoff: d distance: dist [
+        rideID := id.
+        pickup := p.
+        dropoff := d.
+        distance := dist.
+    ]
 
-Ride >> pickupLocation: aLocation
-    pickupLocation := aLocation.
+    fare [
+        "abstract method"
+        ^0.
+    ]
 
-Ride >> dropoffLocation: aLocation
-    dropoffLocation := aLocation.
+    rideDetails [
+        ^'Ride ID: ', rideID printString, 
+          ', From: ', pickup, 
+          ', To: ', dropoff, 
+          ', Distance: ', distance printString
+    ]
+]
 
-Ride >> distance: aDistance
-    distance := aDistance.
+"Define StandardRide"
+Ride subclass: StandardRide [
+    fare [
+        ^distance * 1.5
+    ]
+]
 
-Ride >> calculateFare
-    ^ distance * 1.0.
+"Define PremiumRide"
+Ride subclass: PremiumRide [
+    fare [
+        ^distance * 3
+    ]
+]
 
-Ride >> rideDetails
-    ^ 'Ride ', rideID, ': ',
-      pickupLocation, ' -> ', dropoffLocation,
-      ', Distance: ', distance printString,
-      ', Fare: $', (self calculateFare) printString.
+"Define Driver class"
+Object subclass: Driver [
+    | name rides |
 
-"StandardRide subclass"
-Ride subclass: #StandardRide
-    instanceVariableNames: ''
-    classVariableNames: ''
-    poolDictionaries: ''
-    category: 'RideSharing'.
+    Driver class >> newWith: n [
+        ^self new initializeWith: n
+    ]
 
-StandardRide >> calculateFare
-    ^ distance * 1.5.
+    initializeWith: n [
+        name := n.
+        rides := OrderedCollection new.
+    ]
 
-"PremiumRide subclass"
-Ride subclass: #PremiumRide
-    instanceVariableNames: ''
-    classVariableNames: ''
-    poolDictionaries: ''
-    category: 'RideSharing'.
+    addRide: r [
+        rides add: r.
+    ]
 
-PremiumRide >> calculateFare
-    ^ distance * 3.0.
+    info [
+        | details |
+        details := 'Driver: ', name, ', Rides:'.
+        rides do: [ :r | 
+            details := details, '\n', r rideDetails, ', Fare: $', r fare printString
+        ].
+        ^details
+    ]
+]
 
-"Driver class"
-Object subclass: #Driver
-    instanceVariableNames: 'driverID name rating assignedRides'
-    classVariableNames: ''
-    poolDictionaries: ''
-    category: 'RideSharing'.
+"Define Rider class"
+Object subclass: Rider [
+    | name requests |
 
-Driver >> initialize
-    super initialize.
-    assignedRides := OrderedCollection new.
+    Rider class >> newWith: n [
+        ^self new initializeWith: n
+    ]
 
-Driver >> driverID: anID name: aName rating: aRating
-    self initialize.
-    driverID := anID.
-    name := aName.
-    rating := aRating.
+    initializeWith: n [
+        name := n.
+        requests := OrderedCollection new.
+    ]
 
-Driver >> addRide: aRide
-    assignedRides add: aRide.
+    requestRide: r [
+        requests add: r.
+    ]
 
-Driver >> getDriverInfo
-    ^ String streamContents: [:s |
-        s nextPutAll: 'Driver ', driverID, ': ', name, ' (Rating: ', rating printString, ')'; cr.
-        s nextPutAll: 'Rides:'; cr.
-        assignedRides do: [:r |
-            s nextPutAll: r rideDetails; cr].
-    ].
+    viewRides [
+        | info |
+        info := 'Rider: ', name, ', Requested Rides:'.
+        requests do: [ :r |
+            info := info, '\n', r rideDetails, ', Fare: $', r fare printString
+        ].
+        ^info
+    ]
+]
 
-"Rider class"
-Object subclass: #Rider
-    instanceVariableNames: 'riderID name requestedRides'
-    classVariableNames: ''
-    poolDictionaries: ''
-    category: 'RideSharing'.
+"=== Main Program ==="
+| r1 r2 driver rider |
 
-Rider >> initialize
-    super initialize.
-    requestedRides := OrderedCollection new.
+r1 := StandardRide newWith: 101 pickup: 'A' dropoff: 'B' distance: 5.
+r2 := PremiumRide newWith: 102 pickup: 'C' dropoff: 'D' distance: 8.
 
-Rider >> riderID: anID name: aName
-    self initialize.
-    riderID := anID.
-    name := aName.
+driver := Driver newWith: 'Alex'.
+driver addRide: r1.
+driver addRide: r2.
 
-Rider >> requestRide: aRide
-    requestedRides add: aRide.
+rider := Rider newWith: 'Sara'.
+rider requestRide: r1.
+rider requestRide: r2.
 
-Rider >> viewRides
-    ^ String streamContents: [:s |
-        s nextPutAll: 'Rider ', riderID, ': ', name; cr.
-        s nextPutAll: 'Requested Rides:'; cr.
-        requestedRides do: [:r |
-            s nextPutAll: r rideDetails; cr].
-    ].
-
-"Demonstration in a workspace"
-| s1 p1 rides driver rider |
-s1 := StandardRide new.
-s1 rideID: 'R1'.
-s1 pickupLocation: 'A'.
-s1 dropoffLocation: 'B'.
-s1 distance: 10.
-
-p1 := PremiumRide new.
-p1 rideID: 'P1'.
-p1 pickupLocation: 'C'.
-p1 dropoffLocation: 'D'.
-p1 distance: 5.
-
-rides := OrderedCollection with: s1 with: p1.
-
-driver := Driver new.
-driver driverID: 'D1' name: 'Alice' rating: 4.9.
-
-rider := Rider new.
-rider riderID: 'Rdr1' name: 'Bob'.
-
-rides do: [:r |
-    driver addRide: r.
-    rider requestRide: r.
-].
-
-Transcript show: driver getDriverInfo; cr.
-Transcript show: rider viewRides; cr.
+Transcript show: '--- Driver Info ---\n'.
+Transcript show: driver info; nl.
+Transcript show: '\n--- Rider Info ---\n'.
+Transcript show: rider viewRides; nl.
